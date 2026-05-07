@@ -1,0 +1,99 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Topbar } from '@/components/layout/Topbar'
+import { MetricCard } from '@/components/dashboard/MetricCard'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { Download } from 'lucide-react'
+import type { PipelineMetrics } from '@/types/lead'
+
+export default function DashboardPage() {
+  const [metrics, setMetrics] = useState<PipelineMetrics | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/leads')
+      .then(r => r.json())
+      .then(d => { setMetrics(d.metrics); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  function handleExport() {
+    window.location.href = '/api/export'
+  }
+
+  return (
+    <div className="flex flex-1 flex-col overflow-auto">
+      <Topbar title="Dashboard" />
+
+      <div className="flex flex-1 flex-col gap-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900">Overview</h2>
+            <p className="text-sm text-zinc-500">Your lead generation pipeline at a glance</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {loading ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-28 rounded-xl" />
+            ))
+          ) : (
+            <>
+              <MetricCard
+                label="Total Leads"
+                value={metrics?.total ?? 0}
+                sub="all time"
+              />
+              <MetricCard
+                label="No Website"
+                value={metrics?.no_website ?? 0}
+                sub="hottest leads"
+                highlight="red"
+              />
+              <MetricCard
+                label="Reply Rate"
+                value={`${metrics?.reply_rate ?? 0}%`}
+                sub="of sent messages"
+              />
+              <MetricCard
+                label="Booked"
+                value={metrics?.booked ?? 0}
+                sub="calls scheduled"
+                highlight="green"
+              />
+            </>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-zinc-200 bg-white p-5">
+          <h3 className="mb-3 font-semibold text-zinc-900">Quick start</h3>
+          <ol className="flex flex-col gap-2 text-sm text-zinc-600">
+            <li className="flex items-start gap-2">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white">1</span>
+              Go to <strong className="text-zinc-900">Scout</strong> — enter a niche and city, find businesses
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white">2</span>
+              Save leads to the <strong className="text-zinc-900">Pipeline</strong> — no-website leads highlighted in red
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white">3</span>
+              Click <strong className="text-zinc-900">Diagnose</strong> on each lead — AI analyzes their digital gap
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-zinc-900 text-[11px] font-bold text-white">4</span>
+              Generate a personalized Swedish <strong className="text-zinc-900">cold message</strong> and send it
+            </li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  )
+}
