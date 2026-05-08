@@ -46,6 +46,7 @@ export default function LeadDetailPage() {
   const [email, setEmail] = useState('')
   const [notes, setNotes] = useState('')
   const [savingContact, setSavingContact] = useState(false)
+  const [changingStatus, setChangingStatus] = useState(false)
 
   async function fetchLead() {
     const res = await fetch(`/api/leads/${id}`)
@@ -95,6 +96,17 @@ export default function LeadDetailPage() {
       body: JSON.stringify({ email: email || null, notes: notes || null }),
     })
     setSavingContact(false)
+  }
+
+  async function handleStatusChange(status: string) {
+    setChangingStatus(true)
+    await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    })
+    await fetchLead()
+    setChangingStatus(false)
   }
 
   async function copyText(key: string, text: string) {
@@ -164,7 +176,22 @@ export default function LeadDetailPage() {
               <h2 className="text-lg font-bold text-zinc-900">{lead.business_name}</h2>
               <p className="text-sm text-zinc-500">{lead.niche} · {lead.city}</p>
             </div>
-            <StatusBadge status={lead.status} />
+            <div className="flex items-center gap-2">
+              <StatusBadge status={lead.status} />
+              <select
+                value={lead.status}
+                disabled={changingStatus}
+                onChange={e => handleStatusChange(e.target.value)}
+                className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:opacity-50"
+              >
+                <option value="new">new</option>
+                <option value="diagnosed">diagnosed</option>
+                <option value="outreach_ready">outreach_ready</option>
+                <option value="sent">sent</option>
+                <option value="replied">replied</option>
+                <option value="booked">booked</option>
+              </select>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-3 text-sm text-zinc-600">
@@ -174,8 +201,17 @@ export default function LeadDetailPage() {
               </span>
             )}
             {lead.phone && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1 group">
                 <Phone className="h-3.5 w-3.5" />{lead.phone}
+                <button
+                  onClick={() => copyText('phone', lead.phone!)}
+                  className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-zinc-400 hover:text-zinc-700 transition-all"
+                  title="Copy phone"
+                >
+                  {copiedId === 'phone'
+                    ? <CheckCircle className="h-3 w-3 text-green-500" />
+                    : <Copy className="h-3 w-3" />}
+                </button>
               </span>
             )}
             {lead.google_rating && (
@@ -217,6 +253,9 @@ export default function LeadDetailPage() {
             {lead.years_on_map && <Badge variant="secondary">{lead.years_on_map}+ år aktiva</Badge>}
             {lead.website_age && <Badge variant="secondary">Hemsida ~{lead.website_age} år gammal</Badge>}
           </div>
+          <p className="mt-3 text-xs text-zinc-400">
+            Scouted {new Date(lead.created_at).toLocaleDateString('sv-SE', { year: 'numeric', month: 'short', day: 'numeric' })}
+          </p>
         </div>
 
         {/* Contact details */}

@@ -213,6 +213,13 @@ export default function ScoutPage() {
           </div>
         )}
 
+        {loading && results.length > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-700">
+            <span className="inline-block h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+            Found {results.length} so far — still searching…
+          </div>
+        )}
+
         {results.length > 0 && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">

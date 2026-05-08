@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Star, ChevronRight, Search, Zap, Phone, Send } from 'lucide-react'
+import { Star, ChevronRight, Search, Zap, Phone, Send, Globe } from 'lucide-react'
 import Link from 'next/link'
 import type { Lead, LeadStatus } from '@/types/lead'
 
@@ -29,6 +29,7 @@ export default function LeadsPage() {
   const [bulkOutreaching, setBulkOutreaching] = useState(false)
   const [search, setSearch] = useState('')
   const [nicheFilter, setNicheFilter] = useState('')
+  const [noWebsiteOnly, setNoWebsiteOnly] = useState(false)
 
   async function fetchLeads() {
     const res = await fetch('/api/leads?limit=200')
@@ -101,6 +102,7 @@ export default function LeadsPage() {
     leads
       .filter(l => l.status === status)
       .filter(l => !nicheFilter || l.niche === nicheFilter)
+      .filter(l => !noWebsiteOnly || !l.has_website)
       .filter(l =>
         !q ||
         l.business_name.toLowerCase().includes(q) ||
@@ -109,14 +111,17 @@ export default function LeadsPage() {
       )
       .sort((a, b) => (a.has_website ? 1 : -1) - (b.has_website ? 1 : -1))
 
-  const newCount = leads.filter(l => l.status === 'new' && (!nicheFilter || l.niche === nicheFilter)).length
-  const diagnosedCount = leads.filter(l => l.status === 'diagnosed' && (!nicheFilter || l.niche === nicheFilter)).length
+  const newCount = leads.filter(l => l.status === 'new' && (!nicheFilter || l.niche === nicheFilter) && (!noWebsiteOnly || !l.has_website)).length
+  const diagnosedCount = leads.filter(l => l.status === 'diagnosed' && (!nicheFilter || l.niche === nicheFilter) && (!noWebsiteOnly || !l.has_website)).length
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar title="Pipeline" />
 
-      <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2">
+      <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2 flex-wrap">
+        <span className="text-xs font-semibold text-zinc-500">
+          {leads.length} leads
+        </span>
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
           <Input
@@ -138,6 +143,17 @@ export default function LeadsPage() {
             ))}
           </select>
         )}
+        <button
+          onClick={() => setNoWebsiteOnly(v => !v)}
+          className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${
+            noWebsiteOnly
+              ? 'border-red-400 bg-red-50 text-red-700'
+              : 'border-zinc-200 text-zinc-500 hover:border-zinc-400 hover:text-zinc-700'
+          }`}
+        >
+          <Globe className="h-3.5 w-3.5" />
+          Ingen hemsida
+        </button>
         {newCount > 0 && (
           <Button size="sm" variant="outline" loading={bulkDiagnosing} onClick={bulkDiagnose}>
             <Zap className="h-3.5 w-3.5" />

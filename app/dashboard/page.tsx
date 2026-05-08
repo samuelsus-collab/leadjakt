@@ -5,9 +5,9 @@ import { Topbar } from '@/components/layout/Topbar'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Download, Search } from 'lucide-react'
+import { Download, Search, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
-import type { PipelineMetrics } from '@/types/lead'
+import type { Lead, PipelineMetrics } from '@/types/lead'
 
 const EXPORT_STATUSES = [
   { value: '', label: 'All statuses' },
@@ -21,13 +21,14 @@ const EXPORT_STATUSES = [
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<PipelineMetrics | null>(null)
+  const [recentLeads, setRecentLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [exportStatus, setExportStatus] = useState('')
 
   useEffect(() => {
-    fetch('/api/leads')
+    fetch('/api/leads?limit=5')
       .then(r => r.json())
-      .then(d => { setMetrics(d.metrics); setLoading(false) })
+      .then(d => { setMetrics(d.metrics); setRecentLeads(d.leads ?? []); setLoading(false) })
       .catch(() => setLoading(false))
   }, [])
 
@@ -108,6 +109,38 @@ export default function DashboardPage() {
                   </div>
                   <span className="w-6 text-right text-xs font-semibold text-zinc-700">{count}</span>
                 </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!loading && recentLeads.length > 0 && (
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-zinc-900">Recently added</h3>
+              <Link href="/dashboard/leads" className="text-xs text-zinc-400 hover:text-zinc-700">
+                View all →
+              </Link>
+            </div>
+            <div className="flex flex-col divide-y divide-zinc-100">
+              {recentLeads.map(lead => (
+                <Link
+                  key={lead.id}
+                  href={`/dashboard/leads/${lead.id}`}
+                  className="flex items-center justify-between py-2.5 hover:bg-zinc-50 -mx-2 px-2 rounded-lg transition-colors"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-zinc-900">{lead.business_name}</span>
+                    <span className="text-xs text-zinc-400">{lead.city} · {lead.niche}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!lead.has_website && (
+                      <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold text-red-700">no website</span>
+                    )}
+                    <span className="text-xs text-zinc-400">{new Date(lead.created_at).toLocaleDateString('sv-SE')}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
+                  </div>
+                </Link>
               ))}
             </div>
           </div>

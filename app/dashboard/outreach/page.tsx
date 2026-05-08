@@ -34,11 +34,22 @@ export default function OutreachPage() {
   const [updating, setUpdating] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [notesMap, setNotesMap] = useState<Record<string, string>>({})
+  const [savingNotes, setSavingNotes] = useState<string | null>(null)
 
   async function fetchOutreach() {
     const res = await fetch('/api/outreach')
     const data = await res.json()
-    setOutreach(data.outreach ?? [])
+    const items: OutreachWithLead[] = data.outreach ?? []
+    setOutreach(items)
+    setNotesMap(prev => {
+      const next = { ...prev }
+      for (const o of items) {
+        if (!(o.id in next)) next[o.id] = o.notes ?? ''
+      }
+      return next
+    })
     setLoading(false)
   }
 
@@ -55,6 +66,16 @@ export default function OutreachPage() {
     setUpdating(null)
   }
 
+  async function saveNotes(id: string) {
+    setSavingNotes(id)
+    await fetch(`/api/outreach/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes: notesMap[id] ?? '' }),
+    })
+    setSavingNotes(null)
+  }
+
   async function copyBody(id: string, body: string) {
     await navigator.clipboard.writeText(body)
     setCopiedId(id)
@@ -62,15 +83,19 @@ export default function OutreachPage() {
   }
 
   const counts = {
-    all: outreach.length,
+    all: outreach.filter(o => o.status !== 'archived').length,
     draft: outreach.filter(o => o.status === 'draft').length,
     sent: outreach.filter(o => o.status === 'sent').length,
     replied: outreach.filter(o => o.status === 'replied').length,
     booked: outreach.filter(o => o.status === 'booked').length,
+    archived: outreach.filter(o => o.status === 'archived').length,
   }
 
-  const visible = (filter === 'all' ? outreach : outreach.filter(o => o.status === filter))
-    .sort((a, b) => (b.leads?.gap_score ?? 0) - (a.leads?.gap_score ?? 0))
+  const visible = (
+    filter === 'all'
+      ? outreach.filter(o => o.status !== 'archived')
+      : outreach.filter(o => o.status === filter)
+  ).sort((a, b) => (b.leads?.gap_score ?? 0) - (a.leads?.gap_score ?? 0))
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
@@ -147,7 +172,10 @@ export default function OutreachPage() {
                   )}
 
                   <div className="relative">
-                    <p className="text-sm text-zinc-600 line-clamp-2 pr-8">{item.body}</p>
+                    <p
+                      className={`text-sm text-zinc-600 pr-8 whitespace-pre-wrap cursor-pointer ${expandedId === item.id ? '' : 'line-clamp-2'}`}
+                      onClick={() => setExpandedId(prev => prev === item.id ? null : item.id)}
+                    >{item.body}</p>
                     <button
                       onClick={() => copyBody(item.id, item.body)}
                       className="absolute right-0 top-0 rounded p-1 text-zinc-300 hover:bg-zinc-100 hover:text-zinc-600 transition-colors"
@@ -195,6 +223,27 @@ export default function OutreachPage() {
                         className="text-zinc-400 hover:text-zinc-600"
                       >
                         <Archive className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="flex items-end gap-2">
+                    <textarea
+                      rows={1}
+                      placeholder="Add a note…"
+                      value={notesMap[item.id] ?? ''}
+                      onChange={e => setNotesMap(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveNotes(item.id) } }}
+                      className="flex-1 resize-none rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs text-zinc-700 placeholder-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                    />
+                    {(notesMap[item.id] ?? '') !== (item.notes ?? '') && (
+                      <Button
+                        size="sm" variant="outline"
+                        loading={savingNotes === item.id}
+                        onClick={() => saveNotes(item.id)}
+                        className="h-7 text-xs"
+                      >
+                        Save
                       </Button>
                     )}
                   </div>
