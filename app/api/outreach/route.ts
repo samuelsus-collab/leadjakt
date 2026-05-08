@@ -17,7 +17,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('outreach')
-    .select('*, leads(business_name, city, niche)')
+    .select('*, leads(business_name, city, niche, gap_score, has_website)')
     .order('created_at', { ascending: false })
 
   if (status) query = query.eq('status', status)
@@ -52,6 +52,8 @@ export async function POST(request: Request) {
   const channel = requestedChannel ?? selectChannel(lead.niche)
   const diagnosis = lead.diagnoses?.[0]
 
+  const isEmail = channel === 'email'
+
   const prompt = `Write a personalized cold outreach message in Swedish for this business:
 
 Business: ${lead.business_name}
@@ -61,7 +63,10 @@ Channel: ${channel} (${channel === 'sms' ? 'keep under 160 chars' : channel === 
 ${diagnosis ? `Hero angle: ${diagnosis.hero_angle}\nTone: ${diagnosis.tone}` : ''}
 ${lead.has_website ? `Website: ${lead.website_url ?? 'exists but outdated'}` : 'No website at all'}
 
-Write ONLY the message body. No subject line. No explanation. In Swedish.`
+${isEmail
+  ? 'Respond with a JSON object: {"subject": "<short email subject in Swedish>", "body": "<email body in Swedish>"}. No markdown, no extra text.'
+  : 'Write ONLY the message body. No subject line. No explanation. In Swedish.'
+}`
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
@@ -69,7 +74,20 @@ Write ONLY the message body. No subject line. No explanation. In Swedish.`
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const body = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
+  const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
+
+  let body = raw
+  let subject: string | null = null
+
+  if (isEmail) {
+    try {
+      const j = JSON.parse(raw.substring(raw.indexOf('{'), raw.lastIndexOf('}') + 1))
+      subject = j.subject ?? null
+      body = j.body ?? raw
+    } catch {
+      body = raw
+    }
+  }
 
   const { data: outreach, error } = await supabase
     .from('outreach')
@@ -77,6 +95,7 @@ Write ONLY the message body. No subject line. No explanation. In Swedish.`
       lead_id,
       diagnosis_id: diagnosis?.id ?? null,
       channel,
+      subject,
       body,
       status: 'draft',
     })

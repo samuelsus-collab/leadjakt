@@ -10,7 +10,7 @@ export async function POST(request: Request) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { lead_id } = await request.json() as { lead_id: string }
+  const { lead_id, force } = await request.json() as { lead_id: string; force?: boolean }
 
   const { data: lead, error: leadError } = await supabase
     .from('leads')
@@ -30,7 +30,10 @@ export async function POST(request: Request) {
     .maybeSingle()
 
   if (existing) {
-    return NextResponse.json({ error: 'Diagnosis already exists for this lead' }, { status: 409 })
+    if (!force) {
+      return NextResponse.json({ error: 'Diagnosis already exists for this lead' }, { status: 409 })
+    }
+    await supabase.from('diagnoses').delete().eq('id', existing.id)
   }
 
   try {

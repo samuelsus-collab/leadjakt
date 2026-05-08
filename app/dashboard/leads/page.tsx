@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { Topbar } from '@/components/layout/Topbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Star, Globe, Phone, ChevronRight } from 'lucide-react'
+import { Star, ChevronRight, Search, Zap } from 'lucide-react'
 import Link from 'next/link'
 import type { Lead, LeadStatus } from '@/types/lead'
 
@@ -24,6 +25,8 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true)
   const [diagnosingIds, setDiagnosingIds] = useState<Set<string>>(new Set())
   const [outreachIds, setOutreachIds] = useState<Set<string>>(new Set())
+  const [bulkDiagnosing, setBulkDiagnosing] = useState(false)
+  const [search, setSearch] = useState('')
 
   async function fetchLeads() {
     const res = await fetch('/api/leads?limit=200')
@@ -56,14 +59,63 @@ export default function LeadsPage() {
     fetchLeads()
   }
 
+  async function bulkDiagnose() {
+    const newLeads = leads.filter(l => l.status === 'new')
+    if (!newLeads.length) return
+    setBulkDiagnosing(true)
+    setDiagnosingIds(new Set(newLeads.map(l => l.id)))
+    for (const lead of newLeads) {
+      await fetch('/api/diagnose', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id }),
+      })
+      setDiagnosingIds(prev => { const n = new Set(prev); n.delete(lead.id); return n })
+    }
+    setBulkDiagnosing(false)
+    fetchLeads()
+  }
+
+  const q = search.toLowerCase()
   const byStatus = (status: LeadStatus) =>
     leads
       .filter(l => l.status === status)
+      .filter(l =>
+        !q ||
+        l.business_name.toLowerCase().includes(q) ||
+        l.city.toLowerCase().includes(q) ||
+        l.niche.toLowerCase().includes(q)
+      )
       .sort((a, b) => (a.has_website ? 1 : -1) - (b.has_website ? 1 : -1))
+
+  const newCount = leads.filter(l => l.status === 'new').length
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <Topbar title="Pipeline" />
+
+      <div className="flex items-center gap-3 border-b border-zinc-200 bg-white px-4 py-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+          <Input
+            placeholder="Filter by name, city, niche…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+        {newCount > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            loading={bulkDiagnosing}
+            onClick={bulkDiagnose}
+          >
+            <Zap className="h-3.5 w-3.5" />
+            Diagnose all new ({newCount})
+          </Button>
+        )}
+      </div>
 
       <div className="flex flex-1 gap-3 overflow-x-auto p-4">
         {loading
@@ -86,7 +138,7 @@ export default function LeadsPage() {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-12rem)]">
+                  <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-14rem)]">
                     {columnLeads.map(lead => (
                       <div
                         key={lead.id}

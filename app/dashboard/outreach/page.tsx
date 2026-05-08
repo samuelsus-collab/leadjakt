@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Send, CheckCircle, Calendar, ChevronRight } from 'lucide-react'
+import { Send, CheckCircle, Calendar, ChevronRight, Copy } from 'lucide-react'
 import Link from 'next/link'
 import type { Outreach } from '@/types/outreach'
 
@@ -15,6 +15,8 @@ interface OutreachWithLead extends Outreach {
     business_name: string
     city: string
     niche: string
+    gap_score: number | null
+    has_website: boolean
   } | null
 }
 
@@ -31,6 +33,7 @@ export default function OutreachPage() {
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>('all')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   async function fetchOutreach() {
     const res = await fetch('/api/outreach')
@@ -50,6 +53,12 @@ export default function OutreachPage() {
     })
     await fetchOutreach()
     setUpdating(null)
+  }
+
+  async function copyBody(id: string, body: string) {
+    await navigator.clipboard.writeText(body)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   const counts = {
@@ -108,7 +117,7 @@ export default function OutreachPage() {
                 key={item.id}
                 className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white p-4"
               >
-                <div className="flex flex-1 flex-col gap-2">
+                <div className="flex flex-1 flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-zinc-900 text-sm">
                       {item.leads?.business_name ?? 'Unknown'}
@@ -120,9 +129,34 @@ export default function OutreachPage() {
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_COLORS[item.status]}`}>
                       {item.status}
                     </span>
+                    {item.leads?.gap_score && item.leads.gap_score >= 7 && (
+                      <Badge variant="destructive" className="text-[10px]">
+                        Gap {item.leads.gap_score}/10
+                      </Badge>
+                    )}
+                    {!item.leads?.has_website && (
+                      <Badge variant="destructive" className="text-[10px]">Ingen hemsida</Badge>
+                    )}
                   </div>
 
-                  <p className="text-sm text-zinc-600 line-clamp-2">{item.body}</p>
+                  {item.subject && (
+                    <p className="text-xs text-zinc-500 font-medium">
+                      Ämne: {item.subject}
+                    </p>
+                  )}
+
+                  <div className="relative">
+                    <p className="text-sm text-zinc-600 line-clamp-2 pr-8">{item.body}</p>
+                    <button
+                      onClick={() => copyBody(item.id, item.body)}
+                      className="absolute right-0 top-0 rounded p-1 text-zinc-300 hover:bg-zinc-100 hover:text-zinc-600 transition-colors"
+                      title="Copy message"
+                    >
+                      {copiedId === item.id
+                        ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
 
                   <div className="flex gap-2">
                     {item.status === 'draft' && (
@@ -155,7 +189,7 @@ export default function OutreachPage() {
                   </div>
                 </div>
 
-                <Link href={`/dashboard/leads/${item.lead_id}`}>
+                <Link href={`/dashboard/leads/${item.lead_id}`} className="flex-shrink-0">
                   <ChevronRight className="h-4 w-4 text-zinc-400 hover:text-zinc-900 mt-0.5" />
                 </Link>
               </div>

@@ -28,6 +28,7 @@ export default function ScoutPage() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
+  const [skippedCount, setSkippedCount] = useState(0)
 
   async function handleScout(e: React.FormEvent) {
     e.preventDefault()
@@ -99,6 +100,7 @@ export default function ScoutPage() {
     if (res.ok) {
       const data = await res.json()
       setSavedCount(data.leads?.length ?? toSave.length)
+      setSkippedCount(data.skipped ?? 0)
       setSelected(new Set())
     }
     setSaving(false)
@@ -213,9 +215,15 @@ export default function ScoutPage() {
             </div>
 
             {savedCount > 0 && (
-              <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700">
-                <CheckCircle className="h-4 w-4" />
-                {savedCount} leads saved to pipeline
+              <div className="flex items-center justify-between rounded-lg bg-green-50 p-3 text-sm text-green-700">
+                <span className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4" />
+                  {savedCount} lead{savedCount !== 1 ? 's' : ''} saved
+                  {skippedCount > 0 && ` · ${skippedCount} already in pipeline (skipped)`}
+                </span>
+                <a href="/dashboard/leads" className="font-medium underline underline-offset-2 hover:no-underline">
+                  View pipeline →
+                </a>
               </div>
             )}
 

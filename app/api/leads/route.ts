@@ -69,27 +69,44 @@ export async function POST(request: Request) {
     city: string
   }
 
-  const rows = leads.map(l => ({
-    user_id: user.id,
-    business_name: l.business_name,
-    address: l.address,
-    city: l.city || city,
-    niche,
-    phone: l.phone,
-    website_url: l.website_url,
-    google_rating: l.google_rating,
-    review_count: l.review_count,
-    years_on_map: l.years_on_map,
-    has_website: l.has_website,
-    website_age: l.website_age,
-    source_url: l.source_url,
-    scout_query: `${niche} in ${city}`,
-    status: 'new',
-  }))
+  const names = leads.map(l => l.business_name)
+  const { data: existing } = await supabase
+    .from('leads')
+    .select('business_name, city')
+    .eq('user_id', user.id)
+    .in('business_name', names)
+
+  const existingKeys = new Set(
+    (existing ?? []).map(e => `${e.business_name.toLowerCase()}|${e.city.toLowerCase()}`)
+  )
+
+  const rows = leads
+    .filter(l => !existingKeys.has(`${l.business_name.toLowerCase()}|${(l.city || city).toLowerCase()}`))
+    .map(l => ({
+      user_id: user.id,
+      business_name: l.business_name,
+      address: l.address,
+      city: l.city || city,
+      niche,
+      phone: l.phone,
+      website_url: l.website_url,
+      google_rating: l.google_rating,
+      review_count: l.review_count,
+      years_on_map: l.years_on_map,
+      has_website: l.has_website,
+      website_age: l.website_age,
+      source_url: l.source_url,
+      scout_query: `${niche} in ${city}`,
+      status: 'new',
+    }))
+
+  if (!rows.length) {
+    return NextResponse.json({ leads: [], skipped: leads.length }, { status: 200 })
+  }
 
   const { data, error } = await supabase.from('leads').insert(rows).select()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  return NextResponse.json({ leads: data }, { status: 201 })
+  return NextResponse.json({ leads: data, skipped: leads.length - rows.length }, { status: 201 })
 }

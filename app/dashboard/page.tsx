@@ -5,7 +5,8 @@ import { Topbar } from '@/components/layout/Topbar'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Download } from 'lucide-react'
+import { Download, Search } from 'lucide-react'
+import Link from 'next/link'
 import type { PipelineMetrics } from '@/types/lead'
 
 export default function DashboardPage() {
@@ -39,38 +40,35 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {loading ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
-            ))
-          ) : (
-            <>
-              <MetricCard
-                label="Total Leads"
-                value={metrics?.total ?? 0}
-                sub="all time"
-              />
-              <MetricCard
-                label="No Website"
-                value={metrics?.no_website ?? 0}
-                sub="hottest leads"
-                highlight="red"
-              />
-              <MetricCard
-                label="Reply Rate"
-                value={`${metrics?.reply_rate ?? 0}%`}
-                sub="of sent messages"
-              />
-              <MetricCard
-                label="Booked"
-                value={metrics?.booked ?? 0}
-                sub="calls scheduled"
-                highlight="green"
-              />
-            </>
-          )}
-        </div>
+        {!loading && metrics?.total === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-white p-12 text-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100">
+              <Search className="h-6 w-6 text-zinc-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-zinc-900">No leads yet</p>
+              <p className="text-sm text-zinc-500 mt-1">Scout for local businesses to fill your pipeline</p>
+            </div>
+            <Link href="/dashboard/scout">
+              <Button>Go to Scout</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            {loading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 rounded-xl" />
+              ))
+            ) : (
+              <>
+                <MetricCard label="Total Leads" value={metrics?.total ?? 0} sub="all time" />
+                <MetricCard label="No Website" value={metrics?.no_website ?? 0} sub="hottest leads" highlight="red" />
+                <MetricCard label="Reply Rate" value={`${metrics?.reply_rate ?? 0}%`} sub="of sent messages" />
+                <MetricCard label="Booked" value={metrics?.booked ?? 0} sub="calls scheduled" highlight="green" />
+              </>
+            )}
+          </div>
+        )}
 
         <div className="rounded-xl border border-zinc-200 bg-white p-5">
           <h3 className="mb-3 font-semibold text-zinc-900">Quick start</h3>
