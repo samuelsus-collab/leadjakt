@@ -23,6 +23,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
   }
 
+  const { data: existing } = await supabase
+    .from('diagnoses')
+    .select('id')
+    .eq('lead_id', lead_id)
+    .maybeSingle()
+
+  if (existing) {
+    return NextResponse.json({ error: 'Diagnosis already exists for this lead' }, { status: 409 })
+  }
+
   try {
     const diagnosisData = await runDiagnoserAgent({
       lead_id,

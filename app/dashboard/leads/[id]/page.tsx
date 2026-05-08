@@ -11,7 +11,7 @@ import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Star, Globe, Phone, MapPin, ArrowLeft,
-  Zap, Send, CheckCircle, Calendar
+  Zap, Send, CheckCircle, Calendar, Copy, Trash2
 } from 'lucide-react'
 import type { Lead } from '@/types/lead'
 import type { Diagnosis } from '@/types/diagnosis'
@@ -30,6 +30,8 @@ export default function LeadDetailPage() {
   const [diagnosing, setDiagnosing] = useState(false)
   const [generatingOutreach, setGeneratingOutreach] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   async function fetchLead() {
     const res = await fetch(`/api/leads/${id}`)
@@ -60,6 +62,19 @@ export default function LeadDetailPage() {
     })
     await fetchLead()
     setGeneratingOutreach(false)
+  }
+
+  async function handleDelete() {
+    if (!confirm('Delete this lead? This cannot be undone.')) return
+    setDeleting(true)
+    await fetch(`/api/leads/${id}`, { method: 'DELETE' })
+    router.push('/dashboard/leads')
+  }
+
+  async function copyOutreach(text: string) {
+    await navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   async function updateOutreachStatus(outreachId: string, status: string) {
@@ -99,10 +114,22 @@ export default function LeadDetailPage() {
       <Topbar title={lead.business_name} />
 
       <div className="flex flex-col gap-5 p-6 max-w-2xl">
-        <Button variant="ghost" size="sm" onClick={() => router.back()} className="w-fit -ml-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to pipeline
-        </Button>
+        <div className="flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => router.back()} className="-ml-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to pipeline
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            loading={deleting}
+            onClick={handleDelete}
+            className="text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete lead
+          </Button>
+        </div>
 
         {/* Lead info */}
         <div className={`rounded-xl border p-5 ${!lead.has_website ? 'border-red-200 bg-red-50' : 'border-zinc-200 bg-white'}`}>
@@ -209,10 +236,10 @@ export default function LeadDetailPage() {
         <div className="rounded-xl border border-zinc-200 bg-white p-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-zinc-900">Outreach</h3>
-            {diagnosis && !outreach && (
+            {diagnosis && (
               <Button size="sm" loading={generatingOutreach} onClick={handleGenerateOutreach}>
                 <Send className="h-4 w-4" />
-                Generate Outreach
+                {outreach ? 'Regenerate' : 'Generate Outreach'}
               </Button>
             )}
           </div>
@@ -237,8 +264,15 @@ export default function LeadDetailPage() {
                 </Badge>
               </div>
 
-              <div className="rounded-lg bg-zinc-50 p-3 text-sm text-zinc-700 whitespace-pre-wrap">
+              <div className="relative rounded-lg bg-zinc-50 p-3 text-sm text-zinc-700 whitespace-pre-wrap">
                 {outreach.body}
+                <button
+                  onClick={() => copyOutreach(outreach.body)}
+                  className="absolute right-2 top-2 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
+                  title="Copy message"
+                >
+                  {copied ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                </button>
               </div>
 
               <div className="flex gap-2 flex-wrap">

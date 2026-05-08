@@ -30,6 +30,7 @@ export default function OutreachPage() {
   const [outreach, setOutreach] = useState<OutreachWithLead[]>([])
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState<string | null>(null)
+  const [filter, setFilter] = useState<string>('all')
 
   async function fetchOutreach() {
     const res = await fetch('/api/outreach')
@@ -52,11 +53,14 @@ export default function OutreachPage() {
   }
 
   const counts = {
+    all: outreach.length,
     draft: outreach.filter(o => o.status === 'draft').length,
     sent: outreach.filter(o => o.status === 'sent').length,
     replied: outreach.filter(o => o.status === 'replied').length,
     booked: outreach.filter(o => o.status === 'booked').length,
   }
+
+  const visible = filter === 'all' ? outreach : outreach.filter(o => o.status === filter)
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
@@ -68,11 +72,21 @@ export default function OutreachPage() {
           <p className="text-sm text-zinc-500">Track all messages across channels</p>
         </div>
 
-        <div className="flex gap-3 flex-wrap">
-          {Object.entries(counts).map(([status, count]) => (
-            <div key={status} className={`rounded-lg px-3 py-2 text-sm font-medium ${STATUS_COLORS[status]}`}>
+        <div className="flex gap-2 flex-wrap">
+          {(Object.entries(counts) as [string, number][]).map(([status, count]) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                filter === status
+                  ? 'bg-zinc-900 text-white'
+                  : status === 'all'
+                  ? 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200'
+                  : `${STATUS_COLORS[status]} hover:opacity-80`
+              }`}
+            >
               {count} {status}
-            </div>
+            </button>
           ))}
         </div>
 
@@ -82,14 +96,14 @@ export default function OutreachPage() {
               <Skeleton key={i} className="h-20 rounded-xl" />
             ))}
           </div>
-        ) : outreach.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 p-12 text-center">
             <p className="text-sm text-zinc-500">No outreach yet.</p>
             <p className="text-xs text-zinc-400 mt-1">Diagnose leads in the Pipeline, then generate outreach.</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
-            {outreach.map(item => (
+            {visible.map(item => (
               <div
                 key={item.id}
                 className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white p-4"

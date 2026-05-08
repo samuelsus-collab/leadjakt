@@ -24,6 +24,7 @@ export default function ScoutPage() {
   const [results, setResults] = useState<ScoutResult[]>([])
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [saving, setSaving] = useState(false)
   const [savedCount, setSavedCount] = useState(0)
@@ -32,6 +33,7 @@ export default function ScoutPage() {
     e.preventDefault()
     setResults([])
     setDone(false)
+    setError(null)
     setSelected(new Set())
     setSavedCount(0)
     setLoading(true)
@@ -60,7 +62,7 @@ export default function ScoutPage() {
           if (parsed.done) {
             setDone(true)
           } else if (parsed.error) {
-            console.error(parsed.error)
+            setError(parsed.error as string)
           } else {
             setResults(prev => [...prev, parsed as ScoutResult])
           }
@@ -173,6 +175,13 @@ export default function ScoutPage() {
             </form>
           </CardContent>
         </Card>
+
+        {error && (
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {loading && results.length === 0 && (
           <div className="flex flex-col gap-3">

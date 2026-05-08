@@ -22,6 +22,8 @@ const COLUMNS: { status: LeadStatus; label: string }[] = [
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
+  const [diagnosingIds, setDiagnosingIds] = useState<Set<string>>(new Set())
+  const [outreachIds, setOutreachIds] = useState<Set<string>>(new Set())
 
   async function fetchLeads() {
     const res = await fetch('/api/leads?limit=200')
@@ -33,20 +35,24 @@ export default function LeadsPage() {
   useEffect(() => { fetchLeads() }, [])
 
   async function diagnose(lead: Lead) {
+    setDiagnosingIds(prev => new Set(prev).add(lead.id))
     await fetch('/api/diagnose', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lead_id: lead.id }),
     })
+    setDiagnosingIds(prev => { const n = new Set(prev); n.delete(lead.id); return n })
     fetchLeads()
   }
 
   async function generateOutreach(lead: Lead) {
+    setOutreachIds(prev => new Set(prev).add(lead.id))
     await fetch('/api/outreach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lead_id: lead.id }),
     })
+    setOutreachIds(prev => { const n = new Set(prev); n.delete(lead.id); return n })
     fetchLeads()
   }
 
@@ -80,7 +86,7 @@ export default function LeadsPage() {
                     </span>
                   </div>
 
-                  <div className="flex flex-col gap-2 overflow-y-auto">
+                  <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-12rem)]">
                     {columnLeads.map(lead => (
                       <div
                         key={lead.id}
@@ -122,9 +128,10 @@ export default function LeadsPage() {
                             size="sm"
                             variant="secondary"
                             className="w-full text-xs h-7"
+                            loading={diagnosingIds.has(lead.id)}
                             onClick={() => diagnose(lead)}
                           >
-                            Diagnose
+                            {diagnosingIds.has(lead.id) ? 'Diagnosing...' : 'Diagnose'}
                           </Button>
                         )}
                         {status === 'diagnosed' && (
@@ -132,9 +139,10 @@ export default function LeadsPage() {
                             size="sm"
                             variant="secondary"
                             className="w-full text-xs h-7"
+                            loading={outreachIds.has(lead.id)}
                             onClick={() => generateOutreach(lead)}
                           >
-                            Generate Outreach
+                            {outreachIds.has(lead.id) ? 'Generating...' : 'Generate Outreach'}
                           </Button>
                         )}
                       </div>
