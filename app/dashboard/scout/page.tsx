@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Topbar } from '@/components/layout/Topbar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +21,18 @@ export default function ScoutPage() {
   const [niche, setNiche] = useState('')
   const [city, setCity] = useState('')
   const [count, setCount] = useState(10)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('scout_last')
+      if (saved) {
+        const { niche: n, city: c, count: ct } = JSON.parse(saved)
+        if (n) setNiche(n)
+        if (c) setCity(c)
+        if (ct) setCount(ct)
+      }
+    } catch {}
+  }, [])
   const [results, setResults] = useState<ScoutResult[]>([])
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
@@ -32,6 +44,7 @@ export default function ScoutPage() {
 
   async function handleScout(e: React.FormEvent) {
     e.preventDefault()
+    try { localStorage.setItem('scout_last', JSON.stringify({ niche, city, count })) } catch {}
     setResults([])
     setDone(false)
     setError(null)

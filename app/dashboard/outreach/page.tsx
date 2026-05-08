@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Send, CheckCircle, Calendar, ChevronRight, Copy } from 'lucide-react'
+import { Send, CheckCircle, Calendar, ChevronRight, Copy, Archive } from 'lucide-react'
 import Link from 'next/link'
 import type { Outreach } from '@/types/outreach'
 
@@ -185,6 +185,16 @@ export default function OutreachPage() {
                         onClick={() => updateStatus(item.id, 'booked')}
                       >
                         <Calendar className="h-3.5 w-3.5" /> Mark Booked
+                      </Button>
+                    )}
+                    {item.status !== 'archived' && item.status !== 'booked' && (
+                      <Button
+                        size="sm" variant="ghost"
+                        loading={updating === item.id + 'archived'}
+                        onClick={() => updateStatus(item.id, 'archived')}
+                        className="text-zinc-400 hover:text-zinc-600"
+                      >
+                        <Archive className="h-3.5 w-3.5" />
                       </Button>
                     )}
                   </div>

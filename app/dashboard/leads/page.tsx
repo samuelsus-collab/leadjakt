@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Star, ChevronRight, Search, Zap } from 'lucide-react'
+import { Star, ChevronRight, Search, Zap, Phone, Send } from 'lucide-react'
 import Link from 'next/link'
 import type { Lead, LeadStatus } from '@/types/lead'
 
@@ -26,6 +26,7 @@ export default function LeadsPage() {
   const [diagnosingIds, setDiagnosingIds] = useState<Set<string>>(new Set())
   const [outreachIds, setOutreachIds] = useState<Set<string>>(new Set())
   const [bulkDiagnosing, setBulkDiagnosing] = useState(false)
+  const [bulkOutreaching, setBulkOutreaching] = useState(false)
   const [search, setSearch] = useState('')
   const [nicheFilter, setNicheFilter] = useState('')
 
@@ -77,6 +78,23 @@ export default function LeadsPage() {
     fetchLeads()
   }
 
+  async function bulkOutreach() {
+    const diagnosedLeads = leads.filter(l => l.status === 'diagnosed')
+    if (!diagnosedLeads.length) return
+    setBulkOutreaching(true)
+    setOutreachIds(new Set(diagnosedLeads.map(l => l.id)))
+    for (const lead of diagnosedLeads) {
+      await fetch('/api/outreach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lead_id: lead.id }),
+      })
+      setOutreachIds(prev => { const n = new Set(prev); n.delete(lead.id); return n })
+    }
+    setBulkOutreaching(false)
+    fetchLeads()
+  }
+
   const niches = [...new Set(leads.map(l => l.niche))].sort()
   const q = search.toLowerCase()
   const byStatus = (status: LeadStatus) =>
@@ -92,6 +110,7 @@ export default function LeadsPage() {
       .sort((a, b) => (a.has_website ? 1 : -1) - (b.has_website ? 1 : -1))
 
   const newCount = leads.filter(l => l.status === 'new' && (!nicheFilter || l.niche === nicheFilter)).length
+  const diagnosedCount = leads.filter(l => l.status === 'diagnosed' && (!nicheFilter || l.niche === nicheFilter)).length
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -120,14 +139,15 @@ export default function LeadsPage() {
           </select>
         )}
         {newCount > 0 && (
-          <Button
-            size="sm"
-            variant="outline"
-            loading={bulkDiagnosing}
-            onClick={bulkDiagnose}
-          >
+          <Button size="sm" variant="outline" loading={bulkDiagnosing} onClick={bulkDiagnose}>
             <Zap className="h-3.5 w-3.5" />
             Diagnose all new ({newCount})
+          </Button>
+        )}
+        {diagnosedCount > 0 && (
+          <Button size="sm" variant="outline" loading={bulkOutreaching} onClick={bulkOutreach}>
+            <Send className="h-3.5 w-3.5" />
+            Outreach all diagnosed ({diagnosedCount})
           </Button>
         )}
       </div>
@@ -155,21 +175,24 @@ export default function LeadsPage() {
 
                   <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-14rem)]">
                     {columnLeads.map(lead => (
-                      <div
+                      <Link
                         key={lead.id}
-                        className={`rounded-xl border p-3 text-sm ${
+                        href={`/dashboard/leads/${lead.id}`}
+                        className={`block rounded-xl border p-3 text-sm transition-shadow hover:shadow-md ${
                           !lead.has_website
                             ? 'border-red-200 bg-red-50'
                             : 'border-zinc-200 bg-white'
                         }`}
+                        onClick={e => {
+                          // prevent navigation when action buttons are clicked
+                          if ((e.target as HTMLElement).closest('button')) e.preventDefault()
+                        }}
                       >
                         <div className="mb-1.5 flex items-start justify-between gap-1">
                           <p className="font-semibold text-zinc-900 leading-tight">
                             {lead.business_name}
                           </p>
-                          <Link href={`/dashboard/leads/${lead.id}`}>
-                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-zinc-400 hover:text-zinc-900" />
-                          </Link>
+                          <ChevronRight className="h-4 w-4 flex-shrink-0 text-zinc-400" />
                         </div>
 
                         <p className="text-xs text-zinc-500 mb-2">{lead.city} · {lead.niche}</p>
@@ -184,9 +207,16 @@ export default function LeadsPage() {
                         </div>
 
                         {lead.google_rating && (
-                          <p className="flex items-center gap-1 text-xs text-zinc-400 mb-2">
+                          <p className="flex items-center gap-1 text-xs text-zinc-400 mb-1">
                             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                             {lead.google_rating} ({lead.review_count})
+                          </p>
+                        )}
+
+                        {lead.phone && (
+                          <p className="flex items-center gap-1 text-xs text-zinc-400 mb-2">
+                            <Phone className="h-3 w-3" />
+                            {lead.phone}
                           </p>
                         )}
 
@@ -212,7 +242,7 @@ export default function LeadsPage() {
                             {outreachIds.has(lead.id) ? 'Generating...' : 'Generate Outreach'}
                           </Button>
                         )}
-                      </div>
+                      </Link>
                     ))}
 
                     {columnLeads.length === 0 && (

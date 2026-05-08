@@ -51,4 +51,5 @@ export interface PipelineMetrics {
   no_website: number
   reply_rate: number
   booked: number
+  by_status: Record<LeadStatus, number>
 }

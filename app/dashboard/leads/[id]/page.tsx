@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/leads/StatusBadge'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Star, Phone, MapPin, ArrowLeft, ExternalLink,
+  Star, Phone, MapPin, ArrowLeft, ExternalLink, Globe,
   Zap, Send, CheckCircle, Calendar, Copy, Trash2, Save,
 } from 'lucide-react'
 import type { Lead, OutreachChannel } from '@/types/lead'
@@ -197,10 +197,25 @@ export default function LeadDetailPage() {
             )}
           </div>
 
+          {lead.has_website && lead.website_url && (
+            <div className="mt-2">
+              <a
+                href={lead.website_url.startsWith('http') ? lead.website_url : `https://${lead.website_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                {lead.website_url}
+              </a>
+            </div>
+          )}
+
           <div className="mt-3 flex flex-wrap gap-2">
             {!lead.has_website && <Badge variant="destructive">Ingen hemsida</Badge>}
             {lead.gap_score && <Badge variant="warning">Gap score: {lead.gap_score}/10</Badge>}
             {lead.years_on_map && <Badge variant="secondary">{lead.years_on_map}+ år aktiva</Badge>}
+            {lead.website_age && <Badge variant="secondary">Hemsida ~{lead.website_age} år gammal</Badge>}
           </div>
         </div>
 

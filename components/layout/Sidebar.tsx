@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils/cn'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -24,6 +25,15 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const [newCount, setNewCount] = useState(0)
+
+  useEffect(() => {
+    supabase
+      .from('leads')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'new')
+      .then(({ count }) => setNewCount(count ?? 0))
+  }, [pathname])
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -54,7 +64,15 @@ export function Sidebar() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {href === '/dashboard/leads' && newCount > 0 && (
+                <span className={cn(
+                  'flex h-4 min-w-[1rem] items-center justify-center rounded-full px-1 text-[10px] font-bold',
+                  active ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white'
+                )}>
+                  {newCount}
+                </span>
+              )}
             </Link>
           )
         })}

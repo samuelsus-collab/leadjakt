@@ -93,6 +93,26 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {!loading && metrics && metrics.total > 0 && (
+          <div className="rounded-xl border border-zinc-200 bg-white p-5">
+            <h3 className="mb-3 font-semibold text-zinc-900">Pipeline breakdown</h3>
+            <div className="flex flex-col gap-2">
+              {(Object.entries(metrics.by_status) as [string, number][]).map(([status, count]) => (
+                <div key={status} className="flex items-center gap-3">
+                  <span className="w-28 text-xs text-zinc-500 capitalize">{status.replace('_', ' ')}</span>
+                  <div className="flex-1 h-2 rounded-full bg-zinc-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-zinc-900 transition-all"
+                      style={{ width: metrics.total > 0 ? `${(count / metrics.total) * 100}%` : '0%' }}
+                    />
+                  </div>
+                  <span className="w-6 text-right text-xs font-semibold text-zinc-700">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="rounded-xl border border-zinc-200 bg-white p-5">
           <h3 className="mb-3 font-semibold text-zinc-900">Quick start</h3>
           <ol className="flex flex-col gap-2 text-sm text-zinc-600">

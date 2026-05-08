@@ -45,6 +45,13 @@ export async function GET(request: Request) {
   const booked = totalLeads.filter(l => l.status === 'booked').length
   const replyRate = sent > 0 ? Math.round((replied / sent) * 100) : 0
 
+  const byStatus = {
+    new: 0, diagnosed: 0, outreach_ready: 0, sent: 0, replied: 0, booked: 0,
+  }
+  for (const l of totalLeads) {
+    if (l.status in byStatus) byStatus[l.status as keyof typeof byStatus]++
+  }
+
   return NextResponse.json({
     leads: leads as Lead[],
     total: count ?? 0,
@@ -53,6 +60,7 @@ export async function GET(request: Request) {
       no_website: noWebsite,
       reply_rate: replyRate,
       booked,
+      by_status: byStatus,
     },
   })
 }

@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from('leads')
-    .select('*')
+    .select('*, diagnoses(summary, hero_angle, gap_score, suggested_message)')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
