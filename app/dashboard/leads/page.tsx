@@ -27,6 +27,7 @@ export default function LeadsPage() {
   const [outreachIds, setOutreachIds] = useState<Set<string>>(new Set())
   const [bulkDiagnosing, setBulkDiagnosing] = useState(false)
   const [search, setSearch] = useState('')
+  const [nicheFilter, setNicheFilter] = useState('')
 
   async function fetchLeads() {
     const res = await fetch('/api/leads?limit=200')
@@ -76,10 +77,12 @@ export default function LeadsPage() {
     fetchLeads()
   }
 
+  const niches = [...new Set(leads.map(l => l.niche))].sort()
   const q = search.toLowerCase()
   const byStatus = (status: LeadStatus) =>
     leads
       .filter(l => l.status === status)
+      .filter(l => !nicheFilter || l.niche === nicheFilter)
       .filter(l =>
         !q ||
         l.business_name.toLowerCase().includes(q) ||
@@ -88,7 +91,7 @@ export default function LeadsPage() {
       )
       .sort((a, b) => (a.has_website ? 1 : -1) - (b.has_website ? 1 : -1))
 
-  const newCount = leads.filter(l => l.status === 'new').length
+  const newCount = leads.filter(l => l.status === 'new' && (!nicheFilter || l.niche === nicheFilter)).length
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -104,6 +107,18 @@ export default function LeadsPage() {
             className="pl-8 h-8 text-sm"
           />
         </div>
+        {niches.length > 0 && (
+          <select
+            value={nicheFilter}
+            onChange={e => setNicheFilter(e.target.value)}
+            className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          >
+            <option value="">All niches</option>
+            {niches.map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        )}
         {newCount > 0 && (
           <Button
             size="sm"

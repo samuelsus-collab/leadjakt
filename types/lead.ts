@@ -27,6 +27,7 @@ export interface Lead {
   gap_score: number | null
   scout_query: string | null
   source_url: string | null
+  notes: string | null
   created_at: string
   updated_at: string
 }

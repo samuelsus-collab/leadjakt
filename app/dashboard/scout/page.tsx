@@ -65,7 +65,13 @@ export default function ScoutPage() {
           } else if (parsed.error) {
             setError(parsed.error as string)
           } else {
-            setResults(prev => [...prev, parsed as ScoutResult])
+            const result = parsed as ScoutResult
+            setResults(prev => {
+              if (!result.has_website) {
+                setSelected(s => new Set(s).add(prev.length))
+              }
+              return [...prev, result]
+            })
           }
         } catch {}
       }

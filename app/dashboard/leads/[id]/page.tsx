@@ -6,14 +6,17 @@ import { Topbar } from '@/components/layout/Topbar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-  Star, Globe, Phone, MapPin, ArrowLeft,
-  Zap, Send, CheckCircle, Calendar, Copy, Trash2
+  Star, Phone, MapPin, ArrowLeft, ExternalLink,
+  Zap, Send, CheckCircle, Calendar, Copy, Trash2, Save,
 } from 'lucide-react'
-import type { Lead } from '@/types/lead'
+import type { Lead, OutreachChannel } from '@/types/lead'
 import type { Diagnosis } from '@/types/diagnosis'
 import type { Outreach } from '@/types/outreach'
 
@@ -21,6 +24,13 @@ interface LeadDetail extends Lead {
   diagnoses: Diagnosis[]
   outreach: Outreach[]
 }
+
+const CHANNELS: { value: OutreachChannel; label: string }[] = [
+  { value: 'sms', label: 'SMS' },
+  { value: 'email', label: 'Email' },
+  { value: 'instagram_dm', label: 'Instagram DM' },
+  { value: 'linkedin', label: 'LinkedIn' },
+]
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -31,12 +41,18 @@ export default function LeadDetailPage() {
   const [generatingOutreach, setGeneratingOutreach] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [selectedChannel, setSelectedChannel] = useState<OutreachChannel | ''>('')
+  const [email, setEmail] = useState('')
+  const [notes, setNotes] = useState('')
+  const [savingContact, setSavingContact] = useState(false)
 
   async function fetchLead() {
     const res = await fetch(`/api/leads/${id}`)
     const data = await res.json()
     setLead(data.lead)
+    setEmail(data.lead?.email ?? '')
+    setNotes(data.lead?.notes ?? '')
     setLoading(false)
   }
 
@@ -58,7 +74,7 @@ export default function LeadDetailPage() {
     await fetch('/api/outreach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lead_id: id }),
+      body: JSON.stringify({ lead_id: id, channel: selectedChannel || undefined }),
     })
     await fetchLead()
     setGeneratingOutreach(false)
@@ -71,10 +87,20 @@ export default function LeadDetailPage() {
     router.push('/dashboard/leads')
   }
 
-  async function copyOutreach(text: string) {
+  async function handleSaveContact() {
+    setSavingContact(true)
+    await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email || null, notes: notes || null }),
+    })
+    setSavingContact(false)
+  }
+
+  async function copyText(key: string, text: string) {
     await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopiedId(key)
+    setTimeout(() => setCopiedId(null), 2000)
   }
 
   async function updateOutreachStatus(outreachId: string, status: string) {
@@ -107,7 +133,7 @@ export default function LeadDetailPage() {
   )
 
   const diagnosis = lead.diagnoses?.[0]
-  const outreach = lead.outreach?.[0]
+  const allOutreach = lead.outreach ?? []
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
@@ -158,12 +184,61 @@ export default function LeadDetailPage() {
                 {lead.google_rating} ({lead.review_count} reviews)
               </span>
             )}
+            {lead.source_url && (
+              <a
+                href={lead.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-blue-600 hover:underline"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Google Maps
+              </a>
+            )}
           </div>
 
           <div className="mt-3 flex flex-wrap gap-2">
             {!lead.has_website && <Badge variant="destructive">Ingen hemsida</Badge>}
             {lead.gap_score && <Badge variant="warning">Gap score: {lead.gap_score}/10</Badge>}
             {lead.years_on_map && <Badge variant="secondary">{lead.years_on_map}+ år aktiva</Badge>}
+          </div>
+        </div>
+
+        {/* Contact details */}
+        <div className="rounded-xl border border-zinc-200 bg-white p-5">
+          <h3 className="font-semibold text-zinc-900 mb-3">Contact</h3>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="kontakt@foretaget.se"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                placeholder="Anteckningar om detta lead…"
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={3}
+                className="text-sm"
+              />
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="w-fit"
+              loading={savingContact}
+              onClick={handleSaveContact}
+            >
+              <Save className="h-3.5 w-3.5" />
+              Save
+            </Button>
           </div>
         </div>
 
@@ -225,11 +300,22 @@ export default function LeadDetailPage() {
 
               <div>
                 <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1">Cold Message (Swedish)</p>
-                <Textarea
-                  defaultValue={diagnosis.suggested_message}
-                  rows={4}
-                  className="text-sm"
-                />
+                <div className="relative">
+                  <Textarea
+                    defaultValue={diagnosis.suggested_message}
+                    rows={4}
+                    className="text-sm pr-9"
+                  />
+                  <button
+                    onClick={() => copyText('suggestion', diagnosis.suggested_message)}
+                    className="absolute right-2 top-2 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
+                    title="Copy"
+                  >
+                    {copiedId === 'suggestion'
+                      ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      : <Copy className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
           ) : !diagnosing && (
@@ -242,84 +328,108 @@ export default function LeadDetailPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-semibold text-zinc-900">Outreach</h3>
             {diagnosis && (
-              <Button size="sm" loading={generatingOutreach} onClick={handleGenerateOutreach}>
-                <Send className="h-4 w-4" />
-                {outreach ? 'Regenerate' : 'Generate Outreach'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <select
+                  value={selectedChannel}
+                  onChange={e => setSelectedChannel(e.target.value as OutreachChannel | '')}
+                  className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+                >
+                  <option value="">Auto channel</option>
+                  {CHANNELS.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+                <Button size="sm" loading={generatingOutreach} onClick={handleGenerateOutreach}>
+                  <Send className="h-4 w-4" />
+                  {allOutreach.length > 0 ? 'Regenerate' : 'Generate'}
+                </Button>
+              </div>
             )}
           </div>
 
-          {generatingOutreach && !outreach && (
+          {generatingOutreach && allOutreach.length === 0 && (
             <div className="flex flex-col gap-2">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-2/3" />
             </div>
           )}
 
-          {outreach ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <ChannelBadge channel={outreach.channel} />
-                <Badge variant={
-                  outreach.status === 'booked' ? 'success' :
-                  outreach.status === 'replied' ? 'warning' :
-                  outreach.status === 'sent' ? 'default' : 'secondary'
-                }>
-                  {outreach.status}
-                </Badge>
-              </div>
+          {allOutreach.length > 0 ? (
+            <div className="flex flex-col gap-4">
+              {allOutreach.map((outreach, idx) => (
+                <div key={outreach.id} className={`flex flex-col gap-3 ${idx > 0 ? 'border-t border-zinc-100 pt-4' : ''}`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <ChannelBadge channel={outreach.channel} />
+                    <Badge variant={
+                      outreach.status === 'booked' ? 'success' :
+                      outreach.status === 'replied' ? 'warning' :
+                      outreach.status === 'sent' ? 'default' : 'secondary'
+                    }>
+                      {outreach.status}
+                    </Badge>
+                    {outreach.sent_at && (
+                      <span className="text-xs text-zinc-400">
+                        Sent {new Date(outreach.sent_at).toLocaleDateString('sv-SE')}
+                      </span>
+                    )}
+                    {idx > 0 && (
+                      <span className="text-xs text-zinc-400">
+                        {new Date(outreach.created_at).toLocaleDateString('sv-SE')}
+                      </span>
+                    )}
+                  </div>
 
-              {outreach.subject && (
-                <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm">
-                  <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide mr-2">Ämne:</span>
-                  <span className="text-zinc-700">{outreach.subject}</span>
+                  {outreach.subject && (
+                    <div className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm">
+                      <span className="text-xs font-medium text-zinc-400 uppercase tracking-wide mr-2">Ämne:</span>
+                      <span className="text-zinc-700">{outreach.subject}</span>
+                    </div>
+                  )}
+
+                  <div className="relative rounded-lg bg-zinc-50 p-3 text-sm text-zinc-700 whitespace-pre-wrap">
+                    {outreach.body}
+                    <button
+                      onClick={() => copyText(outreach.id, outreach.body)}
+                      className="absolute right-2 top-2 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
+                      title="Copy message"
+                    >
+                      {copiedId === outreach.id
+                        ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                        : <Copy className="h-3.5 w-3.5" />}
+                    </button>
+                  </div>
+
+                  <div className="flex gap-2 flex-wrap">
+                    {outreach.status === 'draft' && (
+                      <Button
+                        size="sm" variant="outline"
+                        loading={updatingStatus === outreach.id + 'sent'}
+                        onClick={() => updateOutreachStatus(outreach.id, 'sent')}
+                      >
+                        <Send className="h-3.5 w-3.5" /> Mark Sent
+                      </Button>
+                    )}
+                    {outreach.status === 'sent' && (
+                      <Button
+                        size="sm" variant="outline"
+                        loading={updatingStatus === outreach.id + 'replied'}
+                        onClick={() => updateOutreachStatus(outreach.id, 'replied')}
+                      >
+                        <CheckCircle className="h-3.5 w-3.5" /> Mark Replied
+                      </Button>
+                    )}
+                    {outreach.status === 'replied' && (
+                      <Button
+                        size="sm"
+                        loading={updatingStatus === outreach.id + 'booked'}
+                        onClick={() => updateOutreachStatus(outreach.id, 'booked')}
+                      >
+                        <Calendar className="h-3.5 w-3.5" /> Mark Booked
+                      </Button>
+                    )}
+                  </div>
                 </div>
-              )}
-
-              <div className="relative rounded-lg bg-zinc-50 p-3 text-sm text-zinc-700 whitespace-pre-wrap">
-                {outreach.body}
-                <button
-                  onClick={() => copyOutreach(outreach.body)}
-                  className="absolute right-2 top-2 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
-                  title="Copy message"
-                >
-                  {copied ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                </button>
-              </div>
-
-              <div className="flex gap-2 flex-wrap">
-                {outreach.status === 'draft' && (
-                  <Button
-                    size="sm" variant="outline"
-                    loading={updatingStatus === outreach.id + 'sent'}
-                    onClick={() => updateOutreachStatus(outreach.id, 'sent')}
-                  >
-                    <Send className="h-3.5 w-3.5" /> Mark Sent
-                  </Button>
-                )}
-                {outreach.status === 'sent' && (
-                  <Button
-                    size="sm" variant="outline"
-                    loading={updatingStatus === outreach.id + 'replied'}
-                    onClick={() => updateOutreachStatus(outreach.id, 'replied')}
-                  >
-                    <CheckCircle className="h-3.5 w-3.5" /> Mark Replied
-                  </Button>
-                )}
-                {outreach.status === 'replied' && (
-                  <Button
-                    size="sm"
-                    loading={updatingStatus === outreach.id + 'booked'}
-                    onClick={() => updateOutreachStatus(outreach.id, 'booked')}
-                  >
-                    <Calendar className="h-3.5 w-3.5" /> Mark Booked
-                  </Button>
-                )}
-              </div>
-
-              {outreach.sent_at && (
-                <p className="text-xs text-zinc-400">Sent {new Date(outreach.sent_at).toLocaleDateString()}</p>
-              )}
+              ))}
             </div>
           ) : !generatingOutreach && (
             <p className="text-sm text-zinc-400">

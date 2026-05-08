@@ -9,9 +9,20 @@ import { Download, Search } from 'lucide-react'
 import Link from 'next/link'
 import type { PipelineMetrics } from '@/types/lead'
 
+const EXPORT_STATUSES = [
+  { value: '', label: 'All statuses' },
+  { value: 'new', label: 'New' },
+  { value: 'diagnosed', label: 'Diagnosed' },
+  { value: 'outreach_ready', label: 'Ready' },
+  { value: 'sent', label: 'Sent' },
+  { value: 'replied', label: 'Replied' },
+  { value: 'booked', label: 'Booked' },
+]
+
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<PipelineMetrics | null>(null)
   const [loading, setLoading] = useState(true)
+  const [exportStatus, setExportStatus] = useState('')
 
   useEffect(() => {
     fetch('/api/leads')
@@ -21,7 +32,8 @@ export default function DashboardPage() {
   }, [])
 
   function handleExport() {
-    window.location.href = '/api/export'
+    const url = exportStatus ? `/api/export?status=${exportStatus}` : '/api/export'
+    window.location.href = url
   }
 
   return (
@@ -34,10 +46,21 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold text-zinc-900">Overview</h2>
             <p className="text-sm text-zinc-500">Your lead generation pipeline at a glance</p>
           </div>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <select
+              value={exportStatus}
+              onChange={e => setExportStatus(e.target.value)}
+              className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+            >
+              {EXPORT_STATUSES.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {!loading && metrics?.total === 0 ? (

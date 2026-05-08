@@ -69,7 +69,8 @@ export default function OutreachPage() {
     booked: outreach.filter(o => o.status === 'booked').length,
   }
 
-  const visible = filter === 'all' ? outreach : outreach.filter(o => o.status === filter)
+  const visible = (filter === 'all' ? outreach : outreach.filter(o => o.status === filter))
+    .sort((a, b) => (b.leads?.gap_score ?? 0) - (a.leads?.gap_score ?? 0))
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
