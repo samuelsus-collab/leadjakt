@@ -35,6 +35,7 @@ export default function OutreachPage() {
   const [filter, setFilter] = useState<string>('all')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [channelFilter, setChannelFilter] = useState<string>('all')
   const [notesMap, setNotesMap] = useState<Record<string, string>>({})
   const [savingNotes, setSavingNotes] = useState<string | null>(null)
 
@@ -91,11 +92,15 @@ export default function OutreachPage() {
     archived: outreach.filter(o => o.status === 'archived').length,
   }
 
+  const channels = [...new Set(outreach.map(o => o.channel))].sort()
+
   const visible = (
     filter === 'all'
       ? outreach.filter(o => o.status !== 'archived')
       : outreach.filter(o => o.status === filter)
-  ).sort((a, b) => (b.leads?.gap_score ?? 0) - (a.leads?.gap_score ?? 0))
+  )
+    .filter(o => channelFilter === 'all' || o.channel === channelFilter)
+    .sort((a, b) => (b.leads?.gap_score ?? 0) - (a.leads?.gap_score ?? 0))
 
   return (
     <div className="flex flex-1 flex-col overflow-auto">
@@ -125,6 +130,24 @@ export default function OutreachPage() {
           ))}
         </div>
 
+        {channels.length > 1 && (
+          <div className="flex gap-2 flex-wrap">
+            {(['all', ...channels] as string[]).map(ch => (
+              <button
+                key={ch}
+                onClick={() => setChannelFilter(ch)}
+                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                  channelFilter === ch
+                    ? 'border-zinc-900 bg-zinc-900 text-white'
+                    : 'border-zinc-200 text-zinc-500 hover:border-zinc-400'
+                }`}
+              >
+                {ch === 'all' ? 'All channels' : ch.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex flex-col gap-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -145,9 +168,12 @@ export default function OutreachPage() {
               >
                 <div className="flex flex-1 flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-zinc-900 text-sm">
+                    <Link
+                      href={`/dashboard/leads/${item.lead_id}`}
+                      className="font-semibold text-zinc-900 text-sm hover:underline underline-offset-2"
+                    >
                       {item.leads?.business_name ?? 'Unknown'}
-                    </p>
+                    </Link>
                     <span className="text-xs text-zinc-400">
                       {item.leads?.city} · {item.leads?.niche}
                     </span>
@@ -163,6 +189,9 @@ export default function OutreachPage() {
                     {!item.leads?.has_website && (
                       <Badge variant="destructive" className="text-[10px]">Ingen hemsida</Badge>
                     )}
+                    <span className="ml-auto text-xs text-zinc-300">
+                      {new Date(item.created_at).toLocaleDateString('sv-SE')}
+                    </span>
                   </div>
 
                   {item.subject && (
@@ -249,8 +278,8 @@ export default function OutreachPage() {
                   </div>
                 </div>
 
-                <Link href={`/dashboard/leads/${item.lead_id}`} className="flex-shrink-0">
-                  <ChevronRight className="h-4 w-4 text-zinc-400 hover:text-zinc-900 mt-0.5" />
+                <Link href={`/dashboard/leads/${item.lead_id}`} className="flex-shrink-0 mt-0.5" title="Open lead">
+                  <ChevronRight className="h-4 w-4 text-zinc-300 hover:text-zinc-700 transition-colors" />
                 </Link>
               </div>
             ))}

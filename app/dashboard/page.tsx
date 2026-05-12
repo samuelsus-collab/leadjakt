@@ -5,7 +5,7 @@ import { Topbar } from '@/components/layout/Topbar'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Download, Search, ChevronRight } from 'lucide-react'
+import { Download, Search, ChevronRight, Zap, Send, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import type { Lead, PipelineMetrics } from '@/types/lead'
 
@@ -93,6 +93,31 @@ export default function DashboardPage() {
             )}
           </div>
         )}
+
+        {!loading && metrics && metrics.total > 0 && (() => {
+          const needDiagnosis = metrics.by_status.new ?? 0
+          const needOutreach = metrics.by_status.diagnosed ?? 0
+          const actions = [
+            needDiagnosis > 0 && { icon: Zap, label: `${needDiagnosis} lead${needDiagnosis !== 1 ? 's' : ''} waiting for diagnosis`, href: '/dashboard/leads', color: 'text-amber-600 bg-amber-50 border-amber-200' },
+            needOutreach > 0 && { icon: Send, label: `${needOutreach} lead${needOutreach !== 1 ? 's' : ''} ready for outreach`, href: '/dashboard/leads', color: 'text-blue-600 bg-blue-50 border-blue-200' },
+          ].filter(Boolean) as { icon: React.ElementType; label: string; href: string; color: string }[]
+
+          return actions.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              {actions.map(({ icon: Icon, label, href, color }) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className={`flex items-center gap-3 rounded-xl border px-4 py-3 text-sm font-medium transition-opacity hover:opacity-80 ${color}`}
+                >
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  {label}
+                  <ChevronRight className="ml-auto h-4 w-4 opacity-60" />
+                </Link>
+              ))}
+            </div>
+          ) : null
+        })()}
 
         {!loading && metrics && metrics.total > 0 && (
           <div className="rounded-xl border border-zinc-200 bg-white p-5">

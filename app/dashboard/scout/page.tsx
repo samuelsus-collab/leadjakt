@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Globe, AlertCircle, CheckCircle, Star, MapPin, Phone } from 'lucide-react'
 import type { ScoutResult } from '@/types/lead'
 
-const NICHES = [
+const DEFAULT_NICHES = [
   'Roofer', 'Plumber', 'Electrician', 'Painter', 'Carpenter',
   'Salon', 'Barber', 'Nail salon', 'Spa', 'Landscaper',
   'Dentist', 'Realtor', 'Restaurant', 'Mechanic', 'Photographer',
@@ -139,7 +139,12 @@ export default function ScoutPage() {
           <CardContent className="pt-5">
             <form onSubmit={handleScout} className="flex flex-col gap-4">
               <div className="flex flex-wrap gap-2">
-                {NICHES.map(n => (
+                {[
+                  ...DEFAULT_NICHES,
+                  ...(niche && !DEFAULT_NICHES.some(n => n.toLowerCase() === niche.toLowerCase())
+                    ? [niche.charAt(0).toUpperCase() + niche.slice(1)]
+                    : []),
+                ].map(n => (
                   <button
                     key={n}
                     type="button"

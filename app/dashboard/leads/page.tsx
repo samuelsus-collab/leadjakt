@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Star, ChevronRight, Search, Zap, Phone, Send, Globe } from 'lucide-react'
+import { Star, ChevronRight, Search, Zap, Phone, Send, Globe, Trash2, CheckSquare } from 'lucide-react'
 import Link from 'next/link'
 import type { Lead, LeadStatus } from '@/types/lead'
 
@@ -30,6 +30,10 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('')
   const [nicheFilter, setNicheFilter] = useState('')
   const [noWebsiteOnly, setNoWebsiteOnly] = useState(false)
+  const [sortBy, setSortBy] = useState<'newest' | 'gap_score' | 'no_website'>('no_website')
+  const [selecting, setSelecting] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deleting, setDeleting] = useState(false)
 
   async function fetchLeads() {
     const res = await fetch('/api/leads?limit=200')
@@ -96,6 +100,27 @@ export default function LeadsPage() {
     fetchLeads()
   }
 
+  async function bulkDelete() {
+    if (!selectedIds.size) return
+    if (!confirm(`Delete ${selectedIds.size} lead${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) return
+    setDeleting(true)
+    await Promise.all([...selectedIds].map(id =>
+      fetch(`/api/leads/${id}`, { method: 'DELETE' })
+    ))
+    setSelectedIds(new Set())
+    setSelecting(false)
+    setDeleting(false)
+    fetchLeads()
+  }
+
+  function toggleLeadSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
   const niches = [...new Set(leads.map(l => l.niche))].sort()
   const q = search.toLowerCase()
   const byStatus = (status: LeadStatus) =>
@@ -109,7 +134,11 @@ export default function LeadsPage() {
         l.city.toLowerCase().includes(q) ||
         l.niche.toLowerCase().includes(q)
       )
-      .sort((a, b) => (a.has_website ? 1 : -1) - (b.has_website ? 1 : -1))
+      .sort((a, b) => {
+        if (sortBy === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        if (sortBy === 'gap_score') return (b.gap_score ?? 0) - (a.gap_score ?? 0)
+        return (a.has_website ? 1 : -1) - (b.has_website ? 1 : -1)
+      })
 
   const newCount = leads.filter(l => l.status === 'new' && (!nicheFilter || l.niche === nicheFilter) && (!noWebsiteOnly || !l.has_website)).length
   const diagnosedCount = leads.filter(l => l.status === 'diagnosed' && (!nicheFilter || l.niche === nicheFilter) && (!noWebsiteOnly || !l.has_website)).length
@@ -154,17 +183,48 @@ export default function LeadsPage() {
           <Globe className="h-3.5 w-3.5" />
           Ingen hemsida
         </button>
-        {newCount > 0 && (
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value as typeof sortBy)}
+          className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900"
+        >
+          <option value="no_website">Sort: No website first</option>
+          <option value="gap_score">Sort: Gap score</option>
+          <option value="newest">Sort: Newest</option>
+        </select>
+        {newCount > 0 && !selecting && (
           <Button size="sm" variant="outline" loading={bulkDiagnosing} onClick={bulkDiagnose}>
             <Zap className="h-3.5 w-3.5" />
             Diagnose all new ({newCount})
           </Button>
         )}
-        {diagnosedCount > 0 && (
+        {diagnosedCount > 0 && !selecting && (
           <Button size="sm" variant="outline" loading={bulkOutreaching} onClick={bulkOutreach}>
             <Send className="h-3.5 w-3.5" />
             Outreach all diagnosed ({diagnosedCount})
           </Button>
+        )}
+        {!selecting ? (
+          <Button size="sm" variant="ghost" onClick={() => setSelecting(true)} className="text-zinc-400">
+            <CheckSquare className="h-3.5 w-3.5" />
+            Select
+          </Button>
+        ) : (
+          <>
+            <Button
+              size="sm" variant="outline"
+              loading={deleting}
+              disabled={selectedIds.size === 0}
+              onClick={bulkDelete}
+              className="text-red-600 border-red-300 hover:bg-red-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setSelecting(false); setSelectedIds(new Set()) }}>
+              Cancel
+            </Button>
+          </>
         )}
       </div>
 
@@ -193,14 +253,14 @@ export default function LeadsPage() {
                     {columnLeads.map(lead => (
                       <Link
                         key={lead.id}
-                        href={`/dashboard/leads/${lead.id}`}
+                        href={selecting ? '#' : `/dashboard/leads/${lead.id}`}
                         className={`block rounded-xl border p-3 text-sm transition-shadow hover:shadow-md ${
                           !lead.has_website
                             ? 'border-red-200 bg-red-50'
                             : 'border-zinc-200 bg-white'
-                        }`}
+                        } ${selecting && selectedIds.has(lead.id) ? 'ring-2 ring-zinc-900 ring-offset-1' : ''}`}
                         onClick={e => {
-                          // prevent navigation when action buttons are clicked
+                          if (selecting) { e.preventDefault(); toggleLeadSelect(lead.id); return }
                           if ((e.target as HTMLElement).closest('button')) e.preventDefault()
                         }}
                       >

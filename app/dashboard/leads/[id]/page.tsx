@@ -12,9 +12,10 @@ import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/components/ui/toast'
 import {
   Star, Phone, MapPin, ArrowLeft, ExternalLink, Globe,
-  Zap, Send, CheckCircle, Calendar, Copy, Trash2, Save,
+  Zap, Send, CheckCircle, Calendar, Copy, Trash2, Save, Pencil, X,
 } from 'lucide-react'
 import type { Lead, OutreachChannel } from '@/types/lead'
 import type { Diagnosis } from '@/types/diagnosis'
@@ -35,6 +36,7 @@ const CHANNELS: { value: OutreachChannel; label: string }[] = [
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { toast } = useToast()
   const [lead, setLead] = useState<LeadDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [diagnosing, setDiagnosing] = useState(false)
@@ -47,6 +49,9 @@ export default function LeadDetailPage() {
   const [notes, setNotes] = useState('')
   const [savingContact, setSavingContact] = useState(false)
   const [changingStatus, setChangingStatus] = useState(false)
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [infoEdits, setInfoEdits] = useState({ business_name: '', city: '', niche: '' })
+  const [savingInfo, setSavingInfo] = useState(false)
 
   async function fetchLead() {
     const res = await fetch(`/api/leads/${id}`)
@@ -54,6 +59,7 @@ export default function LeadDetailPage() {
     setLead(data.lead)
     setEmail(data.lead?.email ?? '')
     setNotes(data.lead?.notes ?? '')
+    setInfoEdits({ business_name: data.lead?.business_name ?? '', city: data.lead?.city ?? '', niche: data.lead?.niche ?? '' })
     setLoading(false)
   }
 
@@ -61,24 +67,28 @@ export default function LeadDetailPage() {
 
   async function handleDiagnose(force = false) {
     setDiagnosing(true)
-    await fetch('/api/diagnose', {
+    const res = await fetch('/api/diagnose', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lead_id: id, force }),
     })
     await fetchLead()
     setDiagnosing(false)
+    if (res.ok) toast('Diagnosis complete')
+    else toast('Diagnosis failed', 'error')
   }
 
   async function handleGenerateOutreach() {
     setGeneratingOutreach(true)
-    await fetch('/api/outreach', {
+    const res = await fetch('/api/outreach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lead_id: id, channel: selectedChannel || undefined }),
     })
     await fetchLead()
     setGeneratingOutreach(false)
+    if (res.ok) toast('Outreach message generated')
+    else toast('Failed to generate outreach', 'error')
   }
 
   async function handleDelete() {
@@ -90,12 +100,28 @@ export default function LeadDetailPage() {
 
   async function handleSaveContact() {
     setSavingContact(true)
-    await fetch(`/api/leads/${id}`, {
+    const res = await fetch(`/api/leads/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email || null, notes: notes || null }),
     })
     setSavingContact(false)
+    if (res.ok) toast('Contact info saved')
+    else toast('Save failed', 'error')
+  }
+
+  async function handleSaveInfo() {
+    setSavingInfo(true)
+    const res = await fetch(`/api/leads/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(infoEdits),
+    })
+    await fetchLead()
+    setSavingInfo(false)
+    setEditingInfo(false)
+    if (res.ok) toast('Lead info updated')
+    else toast('Save failed', 'error')
   }
 
   async function handleStatusChange(status: string) {
@@ -107,6 +133,7 @@ export default function LeadDetailPage() {
     })
     await fetchLead()
     setChangingStatus(false)
+    toast(`Status → ${status}`, 'info')
   }
 
   async function copyText(key: string, text: string) {
@@ -172,26 +199,69 @@ export default function LeadDetailPage() {
         {/* Lead info */}
         <div className={`rounded-xl border p-5 ${!lead.has_website ? 'border-red-200 bg-red-50' : 'border-zinc-200 bg-white'}`}>
           <div className="flex items-start justify-between mb-3">
-            <div>
-              <h2 className="text-lg font-bold text-zinc-900">{lead.business_name}</h2>
-              <p className="text-sm text-zinc-500">{lead.niche} · {lead.city}</p>
+            <div className="flex-1 min-w-0">
+              {editingInfo ? (
+                <div className="flex flex-col gap-2">
+                  <Input
+                    value={infoEdits.business_name}
+                    onChange={e => setInfoEdits(p => ({ ...p, business_name: e.target.value }))}
+                    className="h-8 text-sm font-bold"
+                  />
+                  <div className="flex gap-2">
+                    <Input
+                      value={infoEdits.niche}
+                      onChange={e => setInfoEdits(p => ({ ...p, niche: e.target.value }))}
+                      className="h-7 text-xs"
+                      placeholder="Niche"
+                    />
+                    <Input
+                      value={infoEdits.city}
+                      onChange={e => setInfoEdits(p => ({ ...p, city: e.target.value }))}
+                      className="h-7 text-xs"
+                      placeholder="City"
+                    />
+                    <Button size="sm" loading={savingInfo} onClick={handleSaveInfo} className="h-7 px-2">
+                      <Save className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingInfo(false)} className="h-7 px-2">
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start gap-1.5">
+                  <div>
+                    <h2 className="text-lg font-bold text-zinc-900">{lead.business_name}</h2>
+                    <p className="text-sm text-zinc-500">{lead.niche} · {lead.city}</p>
+                  </div>
+                  <button
+                    onClick={() => setEditingInfo(true)}
+                    className="mt-1 rounded p-0.5 text-zinc-300 hover:text-zinc-600 transition-colors"
+                    title="Edit"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <StatusBadge status={lead.status} />
-              <select
-                value={lead.status}
-                disabled={changingStatus}
-                onChange={e => handleStatusChange(e.target.value)}
-                className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:opacity-50"
-              >
-                <option value="new">new</option>
-                <option value="diagnosed">diagnosed</option>
-                <option value="outreach_ready">outreach_ready</option>
-                <option value="sent">sent</option>
-                <option value="replied">replied</option>
-                <option value="booked">booked</option>
-              </select>
-            </div>
+            {!editingInfo && (
+              <div className="flex items-center gap-2">
+                <StatusBadge status={lead.status} />
+                <select
+                  value={lead.status}
+                  disabled={changingStatus}
+                  onChange={e => handleStatusChange(e.target.value)}
+                  className="h-7 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-700 focus:outline-none focus:ring-2 focus:ring-zinc-900 disabled:opacity-50"
+                >
+                  <option value="new">new</option>
+                  <option value="diagnosed">diagnosed</option>
+                  <option value="outreach_ready">outreach_ready</option>
+                  <option value="sent">sent</option>
+                  <option value="replied">replied</option>
+                  <option value="booked">booked</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-3 text-sm text-zinc-600">
@@ -202,7 +272,8 @@ export default function LeadDetailPage() {
             )}
             {lead.phone && (
               <span className="flex items-center gap-1 group">
-                <Phone className="h-3.5 w-3.5" />{lead.phone}
+                <Phone className="h-3.5 w-3.5" />
+                <a href={`tel:${lead.phone}`} className="hover:underline">{lead.phone}</a>
                 <button
                   onClick={() => copyText('phone', lead.phone!)}
                   className="opacity-0 group-hover:opacity-100 rounded p-0.5 text-zinc-400 hover:text-zinc-700 transition-all"
