@@ -33,6 +33,24 @@ const CHANNELS: { value: OutreachChannel; label: string }[] = [
   { value: 'linkedin', label: 'LinkedIn' },
 ]
 
+function ColdMessageBox({ text, onCopy, copiedId }: { text: string; onCopy: (k: string, t: string) => void; copiedId: string | null }) {
+  const [value, setValue] = useState(text)
+  const words = value.trim() ? value.trim().split(/\s+/).length : 0
+  return (
+    <div className="relative">
+      <Textarea value={value} onChange={e => setValue(e.target.value)} rows={4} className="text-sm pr-9 pb-6" />
+      <button
+        onClick={() => onCopy('suggestion', value)}
+        className="absolute right-2 top-2 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
+        title="Copy"
+      >
+        {copiedId === 'suggestion' ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+      </button>
+      <span className="absolute bottom-2 right-3 text-[10px] text-zinc-400">{words}w</span>
+    </div>
+  )
+}
+
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
@@ -184,16 +202,26 @@ export default function LeadDetailPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to pipeline
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            loading={deleting}
-            onClick={handleDelete}
-            className="text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete lead
-          </Button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => { navigator.clipboard.writeText(window.location.href); copyText('share', 'x') }}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-500 hover:border-zinc-400 hover:text-zinc-700 transition-colors"
+              title="Copy link"
+            >
+              {copiedId === 'share' ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+              {copiedId === 'share' ? 'Copied!' : 'Copy link'}
+            </button>
+            <Button
+              variant="ghost"
+              size="sm"
+              loading={deleting}
+              onClick={handleDelete}
+              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete lead
+            </Button>
+          </div>
         </div>
 
         {/* Lead info */}
@@ -425,22 +453,7 @@ export default function LeadDetailPage() {
 
               <div>
                 <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-1">Cold Message (Swedish)</p>
-                <div className="relative">
-                  <Textarea
-                    defaultValue={diagnosis.suggested_message}
-                    rows={4}
-                    className="text-sm pr-9"
-                  />
-                  <button
-                    onClick={() => copyText('suggestion', diagnosis.suggested_message)}
-                    className="absolute right-2 top-2 rounded p-1 text-zinc-400 hover:bg-zinc-200 hover:text-zinc-700 transition-colors"
-                    title="Copy"
-                  >
-                    {copiedId === 'suggestion'
-                      ? <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-                      : <Copy className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
+                <ColdMessageBox text={diagnosis.suggested_message} onCopy={copyText} copiedId={copiedId} />
               </div>
             </div>
           ) : !diagnosing && (

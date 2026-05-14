@@ -12,6 +12,7 @@ import {
   Send,
   Zap,
   LogOut,
+  Settings,
 } from 'lucide-react'
 
 const nav = [
@@ -19,6 +20,7 @@ const nav = [
   { href: '/dashboard/scout', label: 'Scout', icon: Search },
   { href: '/dashboard/leads', label: 'Pipeline', icon: Users },
   { href: '/dashboard/outreach', label: 'Outreach', icon: Send },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
 export function Sidebar() {
@@ -78,7 +80,10 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="border-t border-zinc-200 p-3">
+      <div className="border-t border-zinc-200 p-3 flex flex-col gap-1">
+        <p className="px-3 text-[10px] text-zinc-400 font-medium tracking-wide">
+          g→s Scout · g→p Pipeline · g→o Outreach
+        </p>
         <button
           onClick={handleSignOut}
           className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"

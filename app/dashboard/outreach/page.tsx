@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Send, CheckCircle, Calendar, ChevronRight, Copy, Archive } from 'lucide-react'
+import { Send, CheckCircle, Calendar, ChevronRight, Copy, Archive, Trophy } from 'lucide-react'
 import Link from 'next/link'
 import type { Outreach } from '@/types/outreach'
 
@@ -164,8 +164,19 @@ export default function OutreachPage() {
             {visible.map(item => (
               <div
                 key={item.id}
-                className="flex items-start gap-4 rounded-xl border border-zinc-200 bg-white p-4"
+                className={`flex flex-col rounded-xl border ${
+                  item.status === 'booked'
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-zinc-200 bg-white'
+                }`}
               >
+                {item.status === 'booked' && (
+                  <div className="flex items-center gap-2 rounded-t-xl bg-green-100 px-4 py-2 text-xs font-semibold text-green-700">
+                    <Trophy className="h-3.5 w-3.5" />
+                    Booked — deal closed!
+                  </div>
+                )}
+                <div className="flex items-start gap-4 p-4">
                 <div className="flex flex-1 flex-col gap-2 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Link
@@ -278,9 +289,10 @@ export default function OutreachPage() {
                   </div>
                 </div>
 
-                <Link href={`/dashboard/leads/${item.lead_id}`} className="flex-shrink-0 mt-0.5" title="Open lead">
-                  <ChevronRight className="h-4 w-4 text-zinc-300 hover:text-zinc-700 transition-colors" />
-                </Link>
+                  <Link href={`/dashboard/leads/${item.lead_id}`} className="flex-shrink-0 mt-0.5" title="Open lead">
+                    <ChevronRight className="h-4 w-4 text-zinc-300 hover:text-zinc-700 transition-colors" />
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

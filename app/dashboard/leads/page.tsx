@@ -280,6 +280,9 @@ export default function LeadsPage() {
                           {lead.gap_score && lead.gap_score >= 8 && (
                             <Badge variant="destructive" className="text-[10px]">Gap {lead.gap_score}/10</Badge>
                           )}
+                          {lead.status === 'diagnosed' && new Date(lead.updated_at).toDateString() === new Date().toDateString() && (
+                            <Badge variant="secondary" className="text-[10px]">Today</Badge>
+                          )}
                         </div>
 
                         {lead.google_rating && (
@@ -293,6 +296,12 @@ export default function LeadsPage() {
                           <p className="flex items-center gap-1 text-xs text-zinc-400 mb-2">
                             <Phone className="h-3 w-3" />
                             {lead.phone}
+                          </p>
+                        )}
+
+                        {['sent', 'replied', 'booked'].includes(lead.status) && (
+                          <p className="text-[10px] text-zinc-400 mb-1">
+                            Active {new Date(lead.updated_at).toLocaleDateString('sv-SE')}
                           </p>
                         )}
 
