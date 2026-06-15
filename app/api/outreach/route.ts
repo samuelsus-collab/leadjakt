@@ -72,9 +72,28 @@ ${isEmail
     model: 'claude-sonnet-4-6',
     max_tokens: 512,
     messages: [{ role: 'user', content: prompt }],
+    // For email we need a {subject, body} object — structured outputs guarantee
+    // valid JSON. Other channels are a single plain-text message.
+    ...(isEmail && {
+      output_config: {
+        format: {
+          type: 'json_schema' as const,
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              subject: { type: 'string' },
+              body: { type: 'string' },
+            },
+            required: ['subject', 'body'],
+          },
+        },
+      },
+    }),
   })
 
-  const raw = response.content[0].type === 'text' ? response.content[0].text.trim() : ''
+  const textBlock = response.content.find(b => b.type === 'text')
+  const raw = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : ''
 
   let body = raw
   let subject: string | null = null

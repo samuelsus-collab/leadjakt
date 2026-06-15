@@ -62,16 +62,15 @@ Return a JSON array where each object has exactly these fields:
   const seen = new Set<string>()
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (anthropic.beta.messages.create as any)({
+    // web_search is a GA server-side tool; Anthropic runs the searches and
+    // returns results inline (with dynamic filtering on this tool version).
+    const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
       system: SCOUT_SYSTEM,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      tools: [{ type: 'web_search_20260209', name: 'web_search' }],
       messages,
-      betas: ['web-search-2025-03-05'],
-      stream: false,
-    }) as Anthropic.Message
+    })
 
     messages.push({ role: 'assistant', content: response.content })
 

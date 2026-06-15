@@ -39,6 +39,25 @@ Rules:
     max_tokens: 1024,
     system: DIAGNOSER_SYSTEM,
     messages: [{ role: 'user', content: prompt }],
+    // Structured outputs guarantee the response conforms to this schema, so we
+    // never get back prose-wrapped or malformed JSON.
+    output_config: {
+      format: {
+        type: 'json_schema',
+        schema: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            summary: { type: 'string' },
+            hero_angle: { type: 'string' },
+            tone: { type: 'string', enum: ['friendly-direct', 'professional', 'casual', 'urgent'] },
+            gap_score: { type: 'integer', enum: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            suggested_message: { type: 'string' },
+          },
+          required: ['summary', 'hero_angle', 'tone', 'gap_score', 'suggested_message'],
+        },
+      },
+    },
   })
 
   const textBlock = response.content.find(b => b.type === 'text')
