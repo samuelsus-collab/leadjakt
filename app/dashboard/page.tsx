@@ -5,7 +5,7 @@ import { Topbar } from '@/components/layout/Topbar'
 import { MetricCard } from '@/components/dashboard/MetricCard'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { Download, Search, ChevronRight, Zap, Send, AlertCircle } from 'lucide-react'
+import { Download, Search, ChevronRight, Zap, Send } from 'lucide-react'
 import Link from 'next/link'
 import type { Lead, PipelineMetrics } from '@/types/lead'
 

@@ -54,7 +54,7 @@ export default function OutreachPage() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchOutreach() }, [])
+  useEffect(() => { void (async () => { await fetchOutreach() })() }, [])
 
   async function updateStatus(id: string, status: string) {
     setUpdating(id + status)

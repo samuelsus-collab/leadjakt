@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Search, Globe, AlertCircle, CheckCircle, Star, MapPin, Phone } from 'lucide-react'
+import Link from 'next/link'
 import type { ScoutResult } from '@/types/lead'
 
 const DEFAULT_NICHES = [
@@ -23,6 +24,11 @@ export default function ScoutPage() {
   const [count, setCount] = useState(10)
 
   useEffect(() => {
+    // Restore the last scout query from localStorage on mount. This is a
+    // legitimate "hydrate UI state from an external store" case that the
+    // set-state-in-effect rule flags but doesn't have a cleaner alternative
+    // for (a lazy initializer would cause an SSR/client hydration mismatch).
+    /* eslint-disable react-hooks/set-state-in-effect */
     try {
       const saved = localStorage.getItem('scout_last')
       if (saved) {
@@ -32,6 +38,7 @@ export default function ScoutPage() {
         if (ct) setCount(ct)
       }
     } catch {}
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [])
   const [results, setResults] = useState<ScoutResult[]>([])
   const [loading, setLoading] = useState(false)
@@ -97,7 +104,8 @@ export default function ScoutPage() {
   function toggleSelect(i: number) {
     setSelected(prev => {
       const next = new Set(prev)
-      next.has(i) ? next.delete(i) : next.add(i)
+      if (next.has(i)) next.delete(i)
+      else next.add(i)
       return next
     })
   }
@@ -258,9 +266,9 @@ export default function ScoutPage() {
                   {savedNoWebCount > 0 && ` · ${savedNoWebCount} without website 🔴`}
                   {skippedCount > 0 && ` · ${skippedCount} skipped (already saved)`}
                 </span>
-                <a href="/dashboard/leads" className="font-medium underline underline-offset-2 hover:no-underline">
+                <Link href="/dashboard/leads" className="font-medium underline underline-offset-2 hover:no-underline">
                   View pipeline →
-                </a>
+                </Link>
               </div>
             )}
 

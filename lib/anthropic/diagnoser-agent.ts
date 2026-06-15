@@ -41,7 +41,8 @@ Rules:
     messages: [{ role: 'user', content: prompt }],
   })
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
+  const textBlock = response.content.find(b => b.type === 'text')
+  const text = textBlock && textBlock.type === 'text' ? textBlock.text : ''
   const jsonStart = text.indexOf('{')
   const jsonEnd = text.lastIndexOf('}')
 
@@ -49,14 +50,31 @@ Rules:
     throw new Error('Diagnoser returned invalid JSON')
   }
 
-  const parsed = JSON.parse(text.substring(jsonStart, jsonEnd + 1))
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(text.substring(jsonStart, jsonEnd + 1))
+  } catch {
+    throw new Error('Diagnoser returned malformed JSON')
+  }
+
+  if (!parsed.summary || !parsed.suggested_message) {
+    throw new Error('Diagnoser response missing required fields')
+  }
+
+  const rawScore = Number(parsed.gap_score)
+  const gap_score = Number.isFinite(rawScore)
+    ? Math.min(10, Math.max(1, Math.round(rawScore)))
+    : 5
+
+  const VALID_TONES = ['friendly-direct', 'professional', 'casual', 'urgent']
+  const tone = VALID_TONES.includes(String(parsed.tone)) ? String(parsed.tone) : 'professional'
 
   return {
-    summary: parsed.summary,
-    hero_angle: parsed.hero_angle,
-    tone: parsed.tone,
-    gap_score: Math.min(10, Math.max(1, parseInt(parsed.gap_score))),
-    suggested_message: parsed.suggested_message,
+    summary: String(parsed.summary),
+    hero_angle: String(parsed.hero_angle ?? ''),
+    tone,
+    gap_score,
+    suggested_message: String(parsed.suggested_message),
     raw_claude_json: parsed,
   }
 }
