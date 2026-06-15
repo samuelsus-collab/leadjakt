@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select } from '@/components/ui/select'
 import { StatusBadge } from '@/components/leads/StatusBadge'
 import { ChannelBadge } from '@/components/outreach/ChannelBadge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -81,7 +80,7 @@ export default function LeadDetailPage() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchLead() }, [id])
+  useEffect(() => { void (async () => { await fetchLead() })() }, [id])
 
   async function handleDiagnose(force = false) {
     setDiagnosing(true)

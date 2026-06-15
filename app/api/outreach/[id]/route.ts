@@ -33,8 +33,10 @@ export async function PATCH(
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Verify ownership via join
-  if ((outreach as any).leads?.user_id !== user.id) {
+  // Verify ownership via join (Supabase types the joined relation loosely).
+  const owner = (outreach as { leads: { user_id: string } | { user_id: string }[] | null }).leads
+  const ownerId = Array.isArray(owner) ? owner[0]?.user_id : owner?.user_id
+  if (ownerId !== user.id) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

@@ -56,9 +56,13 @@ export async function POST(request: Request) {
 
     if (diagError) return NextResponse.json({ error: diagError.message }, { status: 500 })
 
+    // Only advance status from 'new' — never regress a lead that has already
+    // moved further down the pipeline (e.g. re-diagnosing a 'booked' lead).
+    const statusUpdate = lead.status === 'new' ? { status: 'diagnosed' as const } : {}
+
     const { data: updatedLead } = await supabase
       .from('leads')
-      .update({ status: 'diagnosed', gap_score: diagnosisData.gap_score })
+      .update({ ...statusUpdate, gap_score: diagnosisData.gap_score })
       .eq('id', lead_id)
       .select()
       .single()

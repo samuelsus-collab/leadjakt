@@ -54,57 +54,80 @@ Return a JSON array where each object has exactly these fields:
     },
   ]
 
-  let continueLoop = true
+  // web_search is a server-side tool: Anthropic executes the searches and
+  // returns the results inline, so we do NOT hand-craft tool_result blocks.
+  // We only need to keep resuming the turn while the model reports `pause_turn`
+  // (its signal that an agentic search run isn't finished yet).
+  const MAX_TURNS = 8
+  const seen = new Set<string>()
 
-  while (continueLoop) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const response = await (anthropic.beta.messages.create as any)({
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    // web_search is a GA server-side tool; Anthropic runs the searches and
+    // returns results inline (with dynamic filtering on this tool version).
+    const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
       system: SCOUT_SYSTEM,
-      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      tools: [{ type: 'web_search_20260209', name: 'web_search' }],
       messages,
-      betas: ['web-search-2025-03-05'],
-      stream: false,
-    }) as Anthropic.Message
+    })
 
     messages.push({ role: 'assistant', content: response.content })
 
-    if (response.stop_reason === 'tool_use') {
-      const toolResults: Anthropic.ToolResultBlockParam[] = []
+    if (response.stop_reason === 'pause_turn') {
+      // The model paused mid-run; resume by sending the conversation back.
+      continue
+    }
 
-      for (const block of response.content) {
-        if (block.type === 'tool_use') {
-          toolResults.push({
-            type: 'tool_result',
-            tool_use_id: block.id,
-            content: 'Search completed. Please extract business information from the results.',
-          })
+    // Terminal turn — extract the JSON array from the final text.
+    for (const block of response.content) {
+      if (block.type !== 'text') continue
+      const text = block.text.trim()
+      const jsonStart = text.indexOf('[')
+      const jsonEnd = text.lastIndexOf(']')
+      if (jsonStart === -1 || jsonEnd === -1) continue
+
+      try {
+        const results = JSON.parse(text.substring(jsonStart, jsonEnd + 1))
+        if (!Array.isArray(results)) continue
+        for (const raw of results) {
+          const result = normalizeScoutResult(raw)
+          if (!result) continue
+          const key = `${result.business_name.toLowerCase()}|${result.city.toLowerCase()}`
+          if (seen.has(key)) continue
+          seen.add(key)
+          onResult(result)
         }
-      }
-
-      messages.push({ role: 'user', content: toolResults })
-    } else {
-      continueLoop = false
-
-      for (const block of response.content) {
-        if (block.type === 'text') {
-          try {
-            const text = block.text.trim()
-            const jsonStart = text.indexOf('[')
-            const jsonEnd = text.lastIndexOf(']')
-            if (jsonStart !== -1 && jsonEnd !== -1) {
-              const jsonStr = text.substring(jsonStart, jsonEnd + 1)
-              const results = JSON.parse(jsonStr) as ScoutResult[]
-              for (const result of results) {
-                onResult(result)
-              }
-            }
-          } catch {
-            // If parsing fails, continue without crashing
-          }
-        }
+      } catch {
+        // Malformed JSON — skip without crashing the stream.
       }
     }
+    return
+  }
+}
+
+function asNumberOrNull(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function normalizeScoutResult(raw: unknown): ScoutResult | null {
+  if (!raw || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  const business_name = typeof r.business_name === 'string' ? r.business_name.trim() : ''
+  if (!business_name) return null
+
+  return {
+    business_name,
+    address: typeof r.address === 'string' ? r.address : '',
+    city: typeof r.city === 'string' && r.city.trim() ? r.city.trim() : '',
+    phone: typeof r.phone === 'string' ? r.phone : null,
+    google_rating: asNumberOrNull(r.google_rating),
+    review_count: asNumberOrNull(r.review_count),
+    years_on_map: asNumberOrNull(r.years_on_map),
+    has_website: r.has_website === true,
+    website_url: typeof r.website_url === 'string' ? r.website_url : null,
+    website_age: asNumberOrNull(r.website_age),
+    source_url: typeof r.source_url === 'string' ? r.source_url : null,
   }
 }

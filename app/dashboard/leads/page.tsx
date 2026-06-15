@@ -5,7 +5,6 @@ import { Topbar } from '@/components/layout/Topbar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { StatusBadge } from '@/components/leads/StatusBadge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Star, ChevronRight, Search, Zap, Phone, Send, Globe, Trash2, CheckSquare } from 'lucide-react'
 import Link from 'next/link'
@@ -42,7 +41,7 @@ export default function LeadsPage() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchLeads() }, [])
+  useEffect(() => { void (async () => { await fetchLeads() })() }, [])
 
   async function diagnose(lead: Lead) {
     setDiagnosingIds(prev => new Set(prev).add(lead.id))
@@ -116,7 +115,8 @@ export default function LeadsPage() {
   function toggleLeadSelect(id: string) {
     setSelectedIds(prev => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
